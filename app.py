@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import zipfile
 
 st.set_page_config(
     page_title="Retail Sales Trend Analyzer",
@@ -11,7 +12,10 @@ st.set_page_config(
 st.title("📊 Retail Sales Trend Analyzer")
 st.write("An interactive dashboard for analyzing retail sales trends.")
 
-# Load data
+# Load train data from ZIP file
+with zipfile.ZipFile("train.csv.zip", "r") as zip_ref:
+    zip_ref.extractall(".")
+
 train = pd.read_csv("train.csv")
 store = pd.read_csv("store.csv")
 
