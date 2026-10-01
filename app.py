@@ -27,52 +27,47 @@ st.markdown("""
 }
 
 [data-testid="stSidebar"] * {
-    color: white;
+    color: #ffffff;
 }
 
 .main-title {
-    font-size: 38px;
+    font-size: 36px;
     font-weight: 700;
     color: #111827;
-    margin-bottom: 5px;
+    margin-bottom: 4px;
 }
 
 .subtitle {
-    color: #6b7280;
     font-size: 16px;
+    color: #64748b;
     margin-bottom: 25px;
 }
 
 .section-title {
-    font-size: 24px;
-    font-weight: 650;
-    color: #111827;
-    margin-top: 10px;
-}
-
-.metric-card {
-    background-color: white;
-    padding: 18px;
-    border-radius: 12px;
-    border: 1px solid #e5e7eb;
-    box-shadow: 0px 2px 8px rgba(0,0,0,0.05);
+    font-size: 26px;
+    font-weight: 700;
+    color: #172554;
+    margin-bottom: 15px;
 }
 
 div[data-testid="stMetric"] {
-    background-color: white;
-    border: 1px solid #e5e7eb;
-    padding: 15px;
+    background: white;
     border-radius: 12px;
-    box-shadow: 0px 2px 8px rgba(0,0,0,0.05);
+    padding: 16px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.06);
 }
 
 .stButton > button {
     border-radius: 8px;
-    border: none;
 }
 
 .stDownloadButton > button {
     border-radius: 8px;
+}
+
+div[data-testid="stAlert"] {
+    border-radius: 10px;
 }
 
 </style>
@@ -88,10 +83,7 @@ def load_data():
 
     elif os.path.exists("train.csv.zip"):
 
-        with zipfile.ZipFile(
-            "train.csv.zip",
-            "r"
-        ) as z:
+        with zipfile.ZipFile("train.csv.zip", "r") as z:
 
             file_name = [
                 x for x in z.namelist()
@@ -102,7 +94,6 @@ def load_data():
                 train = pd.read_csv(f)
 
     else:
-
         raise FileNotFoundError(
             "train.csv or train.csv.zip not found"
         )
@@ -147,11 +138,9 @@ def load_data():
 
 
 try:
-
     df = load_data()
 
 except Exception as e:
-
     st.error(str(e))
     st.stop()
 
@@ -166,10 +155,29 @@ st.sidebar.caption(
 
 st.sidebar.divider()
 
+
+st.sidebar.markdown(
+    "### 📑 Navigation"
+)
+
+page = st.sidebar.radio(
+    "Go to",
+    [
+        "Overview",
+        "Sales Trends",
+        "Sales Drivers",
+        "Store Performance",
+        "Findings"
+    ]
+)
+
+
+st.sidebar.divider()
+
+
 st.sidebar.markdown(
     "### 🔎 Filters"
 )
-
 
 years = sorted(
     df["Year"].unique()
@@ -204,25 +212,6 @@ selected_promo = st.sidebar.multiselect(
 
 st.sidebar.divider()
 
-st.sidebar.markdown(
-    "### 📑 Navigation"
-)
-
-
-page = st.sidebar.radio(
-    "Select Section",
-    [
-        "Overview",
-        "Sales Trends",
-        "Sales Drivers",
-        "Store Performance",
-        "Findings"
-    ]
-)
-
-
-st.sidebar.divider()
-
 
 if st.sidebar.button(
     "🔄 Reset Filters",
@@ -235,19 +224,16 @@ if st.sidebar.button(
 
 filtered_df = df[
     df["Year"].isin(selected_years)
-    & df["StoreType"].isin(
-        selected_store_types
-    )
-    & df["Promo"].isin(
-        selected_promo
-    )
+    & df["StoreType"].isin(selected_store_types)
+    & df["Promo"].isin(selected_promo)
 ].copy()
 
 
 if filtered_df.empty:
 
     st.warning(
-        "No data is available for the selected filters."
+        "No data is available for the selected filters. "
+        "Please select different filter values."
     )
 
     st.stop()
@@ -257,41 +243,33 @@ avg_sales = filtered_df[
     "Sales"
 ].mean()
 
-
 avg_customers = filtered_df[
     "Customers"
 ].mean()
-
 
 customer_sales_corr = filtered_df[
     ["Customers", "Sales"]
 ].corr().iloc[0, 1]
 
-
 promo_sales = filtered_df.groupby(
     "Promo"
 )["Sales"].mean()
-
 
 monthly_sales = filtered_df.groupby(
     "YearMonth"
 )["Sales"].mean()
 
-
 year_sales = filtered_df.groupby(
     "Year"
 )["Sales"].mean()
-
 
 month_sales = filtered_df.groupby(
     "Month"
 )["Sales"].mean()
 
-
 store_type_avg = filtered_df.groupby(
     "StoreType"
 )["Sales"].mean()
-
 
 store_type_total = (
     filtered_df.groupby(
@@ -303,16 +281,13 @@ store_type_total = (
     )
 )
 
-
 store_sales = filtered_df.groupby(
     "Store"
 )["Sales"].mean()
 
-
 top_stores = store_sales.sort_values(
     ascending=False
 ).head(10)
-
 
 bottom_stores = store_sales.sort_values(
     ascending=True
@@ -320,7 +295,9 @@ bottom_stores = store_sales.sort_values(
 
 
 st.markdown(
-    '<div class="main-title">Retail Sales Trend Analyzer</div>',
+    '<div class="main-title">'
+    'Retail Sales Trend Analyzer'
+    '</div>',
     unsafe_allow_html=True
 )
 
@@ -336,11 +313,11 @@ st.markdown(
 if page == "Overview":
 
     st.markdown(
-        '<div class="section-title">📌 Overview</div>',
+        '<div class="section-title">'
+        '📌 Overview'
+        '</div>',
         unsafe_allow_html=True
     )
-
-    st.write("")
 
     c1, c2, c3, c4 = st.columns(4)
 
@@ -424,21 +401,18 @@ if page == "Overview":
     col1, col2, col3 = st.columns(3)
 
     with col1:
-
         st.info(
             f"Highest average-sales store type: "
             f"**{store_type_avg.idxmax().upper()}**"
         )
 
     with col2:
-
         st.info(
             f"Highest total-sales store type: "
             f"**{store_type_total.idxmax().upper()}**"
         )
 
     with col3:
-
         st.info(
             f"Highest average-sales month: "
             f"**Month {month_sales.idxmax()}**"
@@ -448,11 +422,11 @@ if page == "Overview":
 elif page == "Sales Trends":
 
     st.markdown(
-        '<div class="section-title">📈 Sales Trends</div>',
+        '<div class="section-title">'
+        '📈 Sales Trends'
+        '</div>',
         unsafe_allow_html=True
     )
-
-    st.write("")
 
     st.markdown(
         "### Monthly Average Sales"
@@ -486,8 +460,6 @@ elif page == "Sales Trends":
         fig,
         use_container_width=False
     )
-
-    st.write("")
 
     col1, col2 = st.columns(2)
 
@@ -555,11 +527,11 @@ elif page == "Sales Trends":
 elif page == "Sales Drivers":
 
     st.markdown(
-        '<div class="section-title">📊 Sales Drivers</div>',
+        '<div class="section-title">'
+        '📊 Sales Drivers'
+        '</div>',
         unsafe_allow_html=True
     )
-
-    st.write("")
 
     st.markdown(
         "### 👥 Customers vs Sales"
@@ -593,8 +565,6 @@ elif page == "Sales Drivers":
         f"Customer-Sales correlation: "
         f"**{customer_sales_corr:.3f}**"
     )
-
-    st.write("")
 
     col1, col2 = st.columns(2)
 
@@ -704,8 +674,6 @@ elif page == "Sales Drivers":
         f"| Promo: **{promo:,.0f}**"
     )
 
-    st.write("")
-
     st.markdown(
         "### 🔥 Correlation Heatmap"
     )
@@ -741,11 +709,11 @@ elif page == "Sales Drivers":
 elif page == "Store Performance":
 
     st.markdown(
-        '<div class="section-title">🏪 Store Performance</div>',
+        '<div class="section-title">'
+        '🏪 Store Performance'
+        '</div>',
         unsafe_allow_html=True
     )
-
-    st.write("")
 
     st.markdown(
         "### Store Type Sales Distribution"
@@ -776,8 +744,6 @@ elif page == "Store Performance":
         fig,
         use_container_width=False
     )
-
-    st.write("")
 
     col1, col2 = st.columns(2)
 
@@ -823,8 +789,6 @@ elif page == "Store Performance":
             hide_index=True
         )
 
-    st.write("")
-
     st.markdown(
         "### 🔍 Individual Store Analysis"
     )
@@ -867,8 +831,6 @@ elif page == "Store Performance":
         f"{len(selected_store_data):,}"
     )
 
-    st.write("")
-
     col1, col2 = st.columns(2)
 
     with col1:
@@ -886,13 +848,8 @@ elif page == "Store Performance":
             ax=ax
         )
 
-        ax.set_xlabel(
-            "Store"
-        )
-
-        ax.set_ylabel(
-            "Average Sales"
-        )
+        ax.set_xlabel("Store")
+        ax.set_ylabel("Average Sales")
 
         ax.tick_params(
             axis="x",
@@ -921,13 +878,8 @@ elif page == "Store Performance":
             ax=ax
         )
 
-        ax.set_xlabel(
-            "Store"
-        )
-
-        ax.set_ylabel(
-            "Average Sales"
-        )
+        ax.set_xlabel("Store")
+        ax.set_ylabel("Average Sales")
 
         ax.tick_params(
             axis="x",
@@ -945,11 +897,11 @@ elif page == "Store Performance":
 elif page == "Findings":
 
     st.markdown(
-        '<div class="section-title">💡 Key Findings</div>',
+        '<div class="section-title">'
+        '💡 Key Findings'
+        '</div>',
         unsafe_allow_html=True
     )
-
-    st.write("")
 
     col1, col2 = st.columns(2)
 
@@ -977,8 +929,6 @@ elif page == "Findings":
             f"**{no_promo:,.0f}** without promotion."
         )
 
-    st.write("")
-
     col1, col2 = st.columns(2)
 
     with col1:
@@ -1003,15 +953,13 @@ elif page == "Findings":
             f"has the highest average sales."
         )
 
-    st.write("")
-
     st.markdown(
         "### 📌 Overall Insight"
     )
 
     st.write(
         "The analysis shows that retail sales are influenced "
-        "by several factors including customer traffic, "
+        "by multiple factors including customer traffic, "
         "promotional activity, time-based patterns and "
         "differences between stores."
     )
