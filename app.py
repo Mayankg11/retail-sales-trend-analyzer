@@ -7,10 +7,6 @@ import zipfile
 import os
 
 
-# =========================================================
-# PAGE SETUP
-# =========================================================
-
 st.set_page_config(
     page_title="Retail Sales Trend Analyzer",
     page_icon="📊",
@@ -20,10 +16,6 @@ st.set_page_config(
 st.title("Retail Sales Trend Analyzer")
 st.caption("Rossmann Store Sales | Interactive EDA + Business Insights")
 
-
-# =========================================================
-# LOAD DATA
-# =========================================================
 
 @st.cache_data
 def load_data():
@@ -49,37 +41,36 @@ def load_data():
 
     store = pd.read_csv("store.csv")
 
-    # Fill missing competition distance
     store["CompetitionDistance"] = store[
         "CompetitionDistance"
     ].fillna(
         store["CompetitionDistance"].median()
     )
 
-    # Remove unnecessary columns
     store = store.drop(columns=[
         "CompetitionOpenSinceMonth",
         "CompetitionOpenSinceYear"
     ])
 
-    # Date conversion
-    train["Date"] = pd.to_datetime(train["Date"])
+    train["Date"] = pd.to_datetime(
+        train["Date"]
+    )
 
-    # Merge datasets
     df = train.merge(
         store,
         on="Store",
         how="left"
     )
 
-    # Feature engineering
     df["Year"] = df["Date"].dt.year
     df["Month"] = df["Date"].dt.month
     df["YearMonth"] = df["Date"].dt.to_period("M")
     df["Day"] = df["Date"].dt.day
     df["Week"] = df["Date"].dt.isocalendar().week
 
-    df["StateHoliday"] = df["StateHoliday"].astype(str)
+    df["StateHoliday"] = df[
+        "StateHoliday"
+    ].astype(str)
 
     return df
 
@@ -92,14 +83,11 @@ except Exception as e:
     st.stop()
 
 
-# =========================================================
-# SIDEBAR FILTERS
-# =========================================================
-
 st.sidebar.title("🔎 Filters")
 
-# Year
-years = sorted(df["Year"].unique())
+years = sorted(
+    df["Year"].unique()
+)
 
 selected_years = st.sidebar.multiselect(
     "Year",
@@ -107,7 +95,6 @@ selected_years = st.sidebar.multiselect(
     default=years
 )
 
-# Store Type
 store_types = sorted(
     df["StoreType"].dropna().unique()
 )
@@ -118,7 +105,6 @@ selected_store_types = st.sidebar.multiselect(
     default=store_types
 )
 
-# Promotion
 selected_promo = st.sidebar.multiselect(
     "Promotion",
     [0, 1],
@@ -127,7 +113,6 @@ selected_promo = st.sidebar.multiselect(
         "No Promo" if x == 0 else "Promo"
 )
 
-# Store
 stores = sorted(
     df["Store"].unique()
 )
@@ -138,16 +123,28 @@ selected_stores = st.sidebar.multiselect(
     default=stores
 )
 
-# Reset
+st.sidebar.divider()
+
+st.sidebar.title("Project Sections")
+
+page = st.sidebar.radio(
+    "Select Section",
+    [
+        "Overview",
+        "Sales Trends",
+        "Sales Drivers",
+        "Store Performance",
+        "Findings"
+    ]
+)
+
+st.sidebar.divider()
+
 if st.sidebar.button("🔄 Reset Filters"):
 
     st.session_state.clear()
     st.rerun()
 
-
-# =========================================================
-# APPLY FILTERS
-# =========================================================
 
 filtered_df = df[
     df["Year"].isin(selected_years)
@@ -156,10 +153,6 @@ filtered_df = df[
     & df["Store"].isin(selected_stores)
 ].copy()
 
-
-# =========================================================
-# EMPTY DATA CHECK
-# =========================================================
 
 if filtered_df.empty:
 
@@ -171,13 +164,19 @@ if filtered_df.empty:
     st.stop()
 
 
-# =========================================================
-# BASIC CALCULATIONS
-# =========================================================
+st.sidebar.metric(
+    "Filtered Records",
+    f"{len(filtered_df):,}"
+)
 
-avg_sales = filtered_df["Sales"].mean()
 
-avg_customers = filtered_df["Customers"].mean()
+avg_sales = filtered_df[
+    "Sales"
+].mean()
+
+avg_customers = filtered_df[
+    "Customers"
+].mean()
 
 promo_sales = filtered_df.groupby(
     "Promo"
@@ -222,22 +221,6 @@ bottom_stores = store_sales.sort_values(
 ).head(10)
 
 
-# =========================================================
-# FILTER SUMMARY
-# =========================================================
-
-st.sidebar.divider()
-
-st.sidebar.metric(
-    "Filtered Records",
-    f"{len(filtered_df):,}"
-)
-
-
-# =========================================================
-# OVERVIEW
-# =========================================================
-
 if page == "Overview":
 
     st.header("Overview")
@@ -266,13 +249,15 @@ if page == "Overview":
 
     st.divider()
 
-    st.subheader("📌 Quick Overview")
+    st.subheader("Quick Overview")
 
     col1, col2 = st.columns(2)
 
     with col1:
 
-        st.write("**Average Sales by Store Type**")
+        st.write(
+            "**Average Sales by Store Type**"
+        )
 
         temp = (
             store_type_avg
@@ -293,7 +278,9 @@ if page == "Overview":
 
     with col2:
 
-        st.write("**Total Sales by Store Type**")
+        st.write(
+            "**Total Sales by Store Type**"
+        )
 
         temp2 = (
             store_type_total
@@ -313,7 +300,7 @@ if page == "Overview":
 
     st.divider()
 
-    st.subheader("💡 What stands out?")
+    st.subheader("What stands out?")
 
     st.markdown(
         f"""
@@ -326,17 +313,9 @@ if page == "Overview":
     )
 
 
-# =========================================================
-# SALES TRENDS
-# =========================================================
-
 elif page == "Sales Trends":
 
     st.header("📈 Sales Trends")
-
-    # -----------------------------------------------------
-    # Monthly Average Sales
-    # -----------------------------------------------------
 
     st.subheader("Monthly Average Sales")
 
@@ -368,11 +347,6 @@ elif page == "Sales Trends":
     st.caption(
         "Average sales movement across the selected period."
     )
-
-
-    # -----------------------------------------------------
-    # Year + Month charts side by side
-    # -----------------------------------------------------
 
     col1, col2 = st.columns(2)
 
@@ -427,17 +401,9 @@ elif page == "Sales Trends":
     )
 
 
-# =========================================================
-# SALES DRIVERS
-# =========================================================
-
 elif page == "Sales Drivers":
 
     st.header("📊 Sales Drivers")
-
-    # -----------------------------------------------------
-    # Customers vs Sales
-    # -----------------------------------------------------
 
     st.subheader("Customers vs Sales")
 
@@ -469,46 +435,41 @@ elif page == "Sales Drivers":
         """
     )
 
-
-    # -----------------------------------------------------
-    # Promotion + Day
-    # -----------------------------------------------------
-
     col1, col2 = st.columns(2)
 
     with col1:
 
         st.subheader("Promotion vs Sales")
 
-        if len(promo_sales) > 0:
+        fig, ax = plt.subplots(
+            figsize=(5, 2.5)
+        )
 
-            fig, ax = plt.subplots(
-                figsize=(5, 2.5)
-            )
+        sns.boxplot(
+            x="Promo",
+            y="Sales",
+            data=filtered_df,
+            ax=ax
+        )
 
-            sns.boxplot(
-                x="Promo",
-                y="Sales",
-                data=filtered_df,
-                ax=ax
-            )
+        ax.set_xlabel(
+            "Promo (0 = No, 1 = Yes)"
+        )
 
-            ax.set_xlabel(
-                "Promo (0 = No, 1 = Yes)"
-            )
+        ax.set_ylabel("Sales")
 
-            ax.set_ylabel("Sales")
+        plt.tight_layout()
 
-            plt.tight_layout()
-
-            st.pyplot(
-                fig,
-                use_container_width=False
-            )
+        st.pyplot(
+            fig,
+            use_container_width=False
+        )
 
     with col2:
 
-        st.subheader("Day of Week + Promotion")
+        st.subheader(
+            "Day of Week + Promotion"
+        )
 
         day_promo = (
             filtered_df.groupby(
@@ -555,32 +516,20 @@ elif page == "Sales Drivers":
             use_container_width=False
         )
 
+    no_promo = promo_sales.get(
+        0,
+        0
+    )
 
-    # -----------------------------------------------------
-    # Promotion Values
-    # -----------------------------------------------------
-
-    st.write("")
-
-    if 0 in promo_sales.index:
-        no_promo = promo_sales[0]
-    else:
-        no_promo = 0
-
-    if 1 in promo_sales.index:
-        promo = promo_sales[1]
-    else:
-        promo = 0
+    promo = promo_sales.get(
+        1,
+        0
+    )
 
     st.info(
         f"Average Sales without Promo: {no_promo:,.0f} | "
         f"With Promo: {promo:,.0f}"
     )
-
-
-    # -----------------------------------------------------
-    # Correlation Heatmap
-    # -----------------------------------------------------
 
     st.subheader("Correlation Heatmap")
 
@@ -612,17 +561,9 @@ elif page == "Sales Drivers":
     )
 
 
-# =========================================================
-# STORE PERFORMANCE
-# =========================================================
-
 elif page == "Store Performance":
 
     st.header("🏪 Store Performance")
-
-    # -----------------------------------------------------
-    # Store Type
-    # -----------------------------------------------------
 
     st.subheader("Sales by Store Type")
 
@@ -646,11 +587,6 @@ elif page == "Store Performance":
         fig,
         use_container_width=False
     )
-
-
-    # -----------------------------------------------------
-    # Total Sales Contribution
-    # -----------------------------------------------------
 
     st.subheader(
         "Total Sales Contribution by Store Type"
@@ -692,12 +628,9 @@ elif page == "Store Performance":
             hide_index=True
         )
 
-
-    # -----------------------------------------------------
-    # Store Selector
-    # -----------------------------------------------------
-
-    st.subheader("🔍 Individual Store Analysis")
+    st.subheader(
+        "🔍 Individual Store Analysis"
+    )
 
     available_stores = sorted(
         filtered_df["Store"].unique()
@@ -738,11 +671,6 @@ elif page == "Store Performance":
             "Records",
             f"{len(selected_store_data):,}"
         )
-
-
-    # -----------------------------------------------------
-    # Top + Bottom Stores
-    # -----------------------------------------------------
 
     col1, col2 = st.columns(2)
 
@@ -803,10 +731,6 @@ elif page == "Store Performance":
         )
 
 
-# =========================================================
-# FINDINGS
-# =========================================================
-
 elif page == "Findings":
 
     st.header("💡 What We Found")
@@ -823,21 +747,18 @@ elif page == "Findings":
         "monitoring store performance."
     )
 
-
     st.subheader("2. Promotions are useful")
 
-    if 0 in promo_sales.index and 1 in promo_sales.index:
-
-        st.write(
-            f"Average sales with promotion are "
-            f"{promo_sales[1]:,.0f}, compared with "
-            f"{promo_sales[0]:,.0f} without promotion."
-        )
-
-    st.info(
-        "Promotion periods show higher average sales in the selected data."
+    st.write(
+        f"Average sales with promotion are "
+        f"{promo:,.0f}, compared with "
+        f"{no_promo:,.0f} without promotion."
     )
 
+    st.info(
+        "Promotion periods show higher average sales "
+        "in the selected data."
+    )
 
     st.subheader("3. Sales change with time")
 
@@ -852,8 +773,9 @@ elif page == "Findings":
         "inventory and staff planning."
     )
 
-
-    st.subheader("4. Store types behave differently")
+    st.subheader(
+        "4. Store types behave differently"
+    )
 
     st.write(
         f"Type {store_type_avg.idxmax().upper()} has the "
@@ -867,22 +789,20 @@ elif page == "Findings":
         "when comparing store types."
     )
 
+    st.subheader(
+        "5. Store performance varies"
+    )
 
-    st.subheader("5. Store performance varies")
-
-    if len(top_stores) > 0:
-
-        st.write(
-            f"Store {top_stores.index[0]} has the highest "
-            f"average sales among the selected stores, while "
-            f"Store {bottom_stores.index[0]} is among the lowest."
-        )
+    st.write(
+        f"Store {top_stores.index[0]} has the highest "
+        f"average sales among the selected stores, while "
+        f"Store {bottom_stores.index[0]} is among the lowest."
+    )
 
     st.info(
         "Store performance can be explored using customers, "
         "promotions, competition and store characteristics."
     )
-
 
     st.divider()
 
@@ -901,10 +821,6 @@ elif page == "Findings":
     )
 
 
-# =========================================================
-# DOWNLOAD FILTERED DATA
-# =========================================================
-
 st.divider()
 
 st.subheader("📥 Export Filtered Data")
@@ -919,11 +835,6 @@ st.download_button(
     file_name="filtered_retail_sales.csv",
     mime="text/csv"
 )
-
-
-# =========================================================
-# FOOTER
-# =========================================================
 
 st.divider()
 
