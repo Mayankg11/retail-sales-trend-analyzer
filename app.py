@@ -14,74 +14,85 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("📊 Retail Sales Trend Analyzer")
-st.caption("Interactive retail sales analytics dashboard")
+st.title("Retail Sales Trend Analyzer")
+st.caption("Interactive analysis of Rossmann retail sales data")
 
 # --------------------------------------------------
 # LOAD DATA
 # --------------------------------------------------
 
-if not os.path.exists("train.csv"):
-    with zipfile.ZipFile("train.csv.zip", "r") as zip_ref:
-        zip_ref.extractall(".")
+@st.cache_data
+def load_data():
 
-train = pd.read_csv("train.csv")
-store = pd.read_csv("store.csv")
+    if not os.path.exists("train.csv"):
+        with zipfile.ZipFile("train.csv.zip", "r") as zip_ref:
+            zip_ref.extractall(".")
 
-# Merge datasets
-df = pd.merge(train, store, on="Store", how="left")
+    train = pd.read_csv("train.csv")
+    store = pd.read_csv("store.csv")
 
-# Convert date
-df["Date"] = pd.to_datetime(df["Date"])
+    df = pd.merge(
+        train,
+        store,
+        on="Store",
+        how="left"
+    )
+
+    df["Date"] = pd.to_datetime(df["Date"])
+
+    return df
+
+
+df = load_data()
 
 # --------------------------------------------------
-# SIDEBAR FILTERS
+# SIDEBAR
 # --------------------------------------------------
 
-st.sidebar.header("🔎 Dashboard Filters")
+st.sidebar.header("Filters")
 
 # Store Type
 store_types = sorted(df["StoreType"].dropna().unique())
 
 selected_store_types = st.sidebar.multiselect(
-    "🏪 Store Type",
+    "Store Type",
     store_types,
     default=store_types
 )
 
-# Store selection
+# Store
 store_list = sorted(df["Store"].unique())
 
 selected_stores = st.sidebar.multiselect(
-    "🏬 Select Stores",
+    "Stores",
     store_list,
     default=store_list
 )
 
 # Promotion
 promo_option = st.sidebar.selectbox(
-    "🎯 Promotion",
+    "Promotion",
     ["All", "Promo Only", "No Promo"]
 )
 
 # State Holiday
 holiday_option = st.sidebar.selectbox(
-    "🏖️ State Holiday",
+    "State Holiday",
     ["All", "Holiday", "No Holiday"]
 )
 
 # School Holiday
 school_option = st.sidebar.selectbox(
-    "🎒 School Holiday",
+    "School Holiday",
     ["All", "Holiday", "No Holiday"]
 )
 
-# Date Range
+# Date
 min_date = df["Date"].min().date()
 max_date = df["Date"].max().date()
 
 date_range = st.sidebar.date_input(
-    "📅 Date Range",
+    "Date Range",
     value=(min_date, max_date),
     min_value=min_date,
     max_value=max_date
@@ -102,25 +113,36 @@ filtered_df = filtered_df[
 ]
 
 if promo_option == "Promo Only":
-    filtered_df = filtered_df[filtered_df["Promo"] == 1]
+    filtered_df = filtered_df[
+        filtered_df["Promo"] == 1
+    ]
 
 elif promo_option == "No Promo":
-    filtered_df = filtered_df[filtered_df["Promo"] == 0]
+    filtered_df = filtered_df[
+        filtered_df["Promo"] == 0
+    ]
 
 if holiday_option == "Holiday":
-    filtered_df = filtered_df[filtered_df["StateHoliday"] != "0"]
+    filtered_df = filtered_df[
+        filtered_df["StateHoliday"] != "0"
+    ]
 
 elif holiday_option == "No Holiday":
-    filtered_df = filtered_df[filtered_df["StateHoliday"] == "0"]
+    filtered_df = filtered_df[
+        filtered_df["StateHoliday"] == "0"
+    ]
 
 if school_option == "Holiday":
-    filtered_df = filtered_df[filtered_df["SchoolHoliday"] == 1]
+    filtered_df = filtered_df[
+        filtered_df["SchoolHoliday"] == 1
+    ]
 
 elif school_option == "No Holiday":
-    filtered_df = filtered_df[filtered_df["SchoolHoliday"] == 0]
+    filtered_df = filtered_df[
+        filtered_df["SchoolHoliday"] == 0
+    ]
 
-# Date filter
-if isinstance(date_range, tuple) and len(date_range) == 2:
+if len(date_range) == 2:
 
     start_date = pd.to_datetime(date_range[0])
     end_date = pd.to_datetime(date_range[1])
@@ -131,84 +153,68 @@ if isinstance(date_range, tuple) and len(date_range) == 2:
     ]
 
 # --------------------------------------------------
-# CHECK DATA
+# EMPTY DATA CHECK
 # --------------------------------------------------
 
 if filtered_df.empty:
 
-    st.warning("⚠️ No data available for the selected filters.")
-
+    st.warning("No data is available for the selected filters.")
     st.stop()
 
 # --------------------------------------------------
-# KPI SECTION
+# KEY METRICS
 # --------------------------------------------------
 
-st.subheader("📌 Key Performance Indicators")
+st.subheader("Sales Overview")
 
 total_sales = filtered_df["Sales"].sum()
 total_customers = filtered_df["Customers"].sum()
 average_sales = filtered_df["Sales"].mean()
 total_stores = filtered_df["Store"].nunique()
 
-promo_sales = filtered_df.loc[
-    filtered_df["Promo"] == 1,
-    "Sales"
-].sum()
-
-total_sales_for_promo = filtered_df["Sales"].sum()
-
-if total_sales_for_promo > 0:
-    promo_percentage = (promo_sales / total_sales_for_promo) * 100
-else:
-    promo_percentage = 0
-
-col1, col2, col3, col4, col5 = st.columns(5)
+col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     st.metric(
-        "💰 Total Sales",
+        "Total Sales",
         f"{total_sales:,.0f}"
     )
 
 with col2:
     st.metric(
-        "🏪 Stores",
-        f"{total_stores:,}"
+        "Customers",
+        f"{total_customers:,.0f}"
     )
 
 with col3:
     st.metric(
-        "👥 Customers",
-        f"{total_customers:,.0f}"
+        "Average Daily Sales",
+        f"{average_sales:,.0f}"
     )
 
 with col4:
     st.metric(
-        "📊 Avg. Sales",
-        f"{average_sales:,.0f}"
-    )
-
-with col5:
-    st.metric(
-        "🎯 Promo Sales %",
-        f"{promo_percentage:.1f}%"
+        "Stores",
+        f"{total_stores:,}"
     )
 
 # --------------------------------------------------
 # MONTHLY SALES TREND
 # --------------------------------------------------
 
-st.subheader("📈 Monthly Sales Trend")
+st.subheader("Monthly Sales Trend")
 
 monthly_sales = (
     filtered_df
-    .set_index("Date")
-    .resample("ME")["Sales"]
+    .groupby(
+        filtered_df["Date"].dt.to_period("M")
+    )["Sales"]
     .sum()
 )
 
-fig, ax = plt.subplots(figsize=(14, 5))
+monthly_sales.index = monthly_sales.index.to_timestamp()
+
+fig, ax = plt.subplots(figsize=(12, 4))
 
 ax.plot(
     monthly_sales.index,
@@ -226,18 +232,15 @@ plt.tight_layout()
 st.pyplot(fig)
 
 # --------------------------------------------------
-# TWO COLUMN SECTION
+# STORE TYPE ANALYSIS
 # --------------------------------------------------
+
+st.subheader("Store Analysis")
 
 col1, col2 = st.columns(2)
 
-# --------------------------------------------------
-# SALES BY STORE TYPE
-# --------------------------------------------------
-
+# Sales by Store Type
 with col1:
-
-    st.subheader("🏪 Sales by Store Type")
 
     store_type_sales = (
         filtered_df
@@ -246,7 +249,7 @@ with col1:
         .sort_values(ascending=False)
     )
 
-    fig, ax = plt.subplots(figsize=(7, 5))
+    fig, ax = plt.subplots(figsize=(7, 4))
 
     ax.bar(
         store_type_sales.index,
@@ -261,42 +264,96 @@ with col1:
 
     st.pyplot(fig)
 
-# --------------------------------------------------
-# PROMO ANALYSIS
-# --------------------------------------------------
-
+# Pie Chart
 with col2:
 
-    st.subheader("🎯 Promo vs No Promo")
+    fig, ax = plt.subplots(figsize=(7, 4))
 
-    promo_sales_data = (
-        filtered_df
-        .groupby("Promo")["Sales"]
-        .sum()
+    ax.pie(
+        store_type_sales.values,
+        labels=store_type_sales.index,
+        autopct="%1.1f%%",
+        startangle=90
     )
 
-    no_promo = promo_sales_data.get(0, 0)
-    promo = promo_sales_data.get(1, 0)
-
-    fig, ax = plt.subplots(figsize=(7, 5))
-
-    ax.bar(
-        ["No Promo", "Promo"],
-        [no_promo, promo]
-    )
-
-    ax.set_ylabel("Total Sales")
-    ax.set_title("Promotion Impact on Sales")
+    ax.set_title("Sales Share by Store Type")
 
     plt.tight_layout()
 
     st.pyplot(fig)
 
 # --------------------------------------------------
-# TOP 10 STORES
+# PROMOTION ANALYSIS
 # --------------------------------------------------
 
-st.subheader("🏆 Top 10 Stores by Sales")
+st.subheader("Promotion Analysis")
+
+promo_data = (
+    filtered_df
+    .groupby("Promo")["Sales"]
+    .mean()
+)
+
+no_promo_average = promo_data.get(0, 0)
+promo_average = promo_data.get(1, 0)
+
+col1, col2 = st.columns(2)
+
+with col1:
+
+    fig, ax = plt.subplots(figsize=(7, 4))
+
+    ax.bar(
+        ["No Promotion", "Promotion"],
+        [no_promo_average, promo_average]
+    )
+
+    ax.set_ylabel("Average Daily Sales")
+    ax.set_title("Average Sales: Promotion vs No Promotion")
+
+    plt.tight_layout()
+
+    st.pyplot(fig)
+
+with col2:
+
+    promo_sales = (
+        filtered_df
+        .groupby("Promo")["Sales"]
+        .sum()
+    )
+
+    labels = []
+    values = []
+
+    if 0 in promo_sales.index:
+        labels.append("No Promotion")
+        values.append(promo_sales[0])
+
+    if 1 in promo_sales.index:
+        labels.append("Promotion")
+        values.append(promo_sales[1])
+
+    fig, ax = plt.subplots(figsize=(7, 4))
+
+    ax.pie(
+        values,
+        labels=labels,
+        autopct="%1.1f%%",
+        startangle=90
+    )
+
+    ax.set_title("Sales Share: Promotion vs No Promotion")
+
+    plt.tight_layout()
+
+    st.pyplot(fig)
+
+# --------------------------------------------------
+# TOP STORES
+# --------------------------------------------------
+
+st.subheader("Store Performance")
 
 top_stores = (
     filtered_df
@@ -306,7 +363,7 @@ top_stores = (
     .head(10)
 )
 
-fig, ax = plt.subplots(figsize=(12, 5))
+fig, ax = plt.subplots(figsize=(12, 4))
 
 ax.bar(
     top_stores.index.astype(str),
@@ -315,17 +372,15 @@ ax.bar(
 
 ax.set_xlabel("Store")
 ax.set_ylabel("Total Sales")
-ax.set_title("Top 10 Performing Stores")
+ax.set_title("Top 10 Stores by Sales")
 
 plt.tight_layout()
 
 st.pyplot(fig)
 
 # --------------------------------------------------
-# BOTTOM 10 STORES
+# BOTTOM STORES
 # --------------------------------------------------
-
-st.subheader("📉 Bottom 10 Stores by Sales")
 
 bottom_stores = (
     filtered_df
@@ -335,7 +390,7 @@ bottom_stores = (
     .head(10)
 )
 
-fig, ax = plt.subplots(figsize=(12, 5))
+fig, ax = plt.subplots(figsize=(12, 4))
 
 ax.bar(
     bottom_stores.index.astype(str),
@@ -344,17 +399,17 @@ ax.bar(
 
 ax.set_xlabel("Store")
 ax.set_ylabel("Total Sales")
-ax.set_title("Bottom 10 Stores")
+ax.set_title("Bottom 10 Stores by Sales")
 
 plt.tight_layout()
 
 st.pyplot(fig)
 
 # --------------------------------------------------
-# CUSTOMER VS SALES
+# CUSTOMER ANALYSIS
 # --------------------------------------------------
 
-st.subheader("👥 Customer Count vs Sales")
+st.subheader("Customer Analysis")
 
 sample_size = min(5000, len(filtered_df))
 
@@ -363,7 +418,7 @@ sample_df = filtered_df.sample(
     random_state=42
 )
 
-fig, ax = plt.subplots(figsize=(12, 5))
+fig, ax = plt.subplots(figsize=(12, 4))
 
 ax.scatter(
     sample_df["Customers"],
@@ -373,47 +428,46 @@ ax.scatter(
 
 ax.set_xlabel("Customers")
 ax.set_ylabel("Sales")
-ax.set_title("Relationship Between Customers and Sales")
+ax.set_title("Customers vs Sales")
 
 plt.tight_layout()
 
 st.pyplot(fig)
 
 # --------------------------------------------------
-# HOLIDAY ANALYSIS
+# SCHOOL HOLIDAY ANALYSIS
 # --------------------------------------------------
 
-st.subheader("🏖️ Holiday vs Non-Holiday Sales")
+st.subheader("Holiday Analysis")
 
-holiday_sales = (
+school_holiday_sales = (
     filtered_df
     .groupby("SchoolHoliday")["Sales"]
     .mean()
 )
 
-fig, ax = plt.subplots(figsize=(8, 5))
+holiday_values = [
+    school_holiday_sales.get(0, 0),
+    school_holiday_sales.get(1, 0)
+]
+
+fig, ax = plt.subplots(figsize=(8, 4))
 
 ax.bar(
-    ["No School Holiday", "School Holiday"],
-    [
-        holiday_sales.get(0, 0),
-        holiday_sales.get(1, 0)
-    ]
+    ["Normal Day", "School Holiday"],
+    holiday_values
 )
 
-ax.set_ylabel("Average Sales")
+ax.set_ylabel("Average Daily Sales")
 ax.set_title("Average Sales During School Holidays")
 
-plt.xticks(rotation=10)
 plt.tight_layout()
 
 st.pyplot(fig)
 
 # --------------------------------------------------
-# DAY OF WEEK ANALYSIS
+# DAY OF WEEK
 # --------------------------------------------------
-
-st.subheader("📅 Average Sales by Day of Week")
 
 day_sales = (
     filtered_df
@@ -431,9 +485,16 @@ day_names = {
     7: "Sunday"
 }
 
-day_sales.index = day_sales.index.map(day_names)
+day_sales = day_sales.reindex(
+    [1, 2, 3, 4, 5, 6, 7]
+)
 
-fig, ax = plt.subplots(figsize=(12, 5))
+day_sales.index = [
+    day_names[x]
+    for x in day_sales.index
+]
+
+fig, ax = plt.subplots(figsize=(12, 4))
 
 ax.bar(
     day_sales.index,
@@ -441,27 +502,40 @@ ax.bar(
 )
 
 ax.set_xlabel("Day")
-ax.set_ylabel("Average Sales")
+ax.set_ylabel("Average Daily Sales")
 ax.set_title("Average Sales by Day of Week")
 
-plt.xticks(rotation=30)
+plt.xticks(rotation=25)
 plt.tight_layout()
 
 st.pyplot(fig)
 
 # --------------------------------------------------
-# YEAR-WISE SALES
+# YEAR-WISE ANALYSIS
 # --------------------------------------------------
 
-st.subheader("📅 Year-wise Sales")
+st.subheader("Year-wise Sales Performance")
 
-year_sales = (
+# Calculate monthly sales first
+monthly_year_data = (
     filtered_df
-    .groupby(filtered_df["Date"].dt.year)["Sales"]
+    .assign(
+        Year=filtered_df["Date"].dt.year,
+        Month=filtered_df["Date"].dt.month
+    )
+    .groupby(["Year", "Month"])["Sales"]
     .sum()
+    .reset_index()
 )
 
-fig, ax = plt.subplots(figsize=(8, 5))
+# Average monthly sales for each year
+year_sales = (
+    monthly_year_data
+    .groupby("Year")["Sales"]
+    .mean()
+)
+
+fig, ax = plt.subplots(figsize=(8, 4))
 
 ax.bar(
     year_sales.index.astype(str),
@@ -469,18 +543,23 @@ ax.bar(
 )
 
 ax.set_xlabel("Year")
-ax.set_ylabel("Total Sales")
-ax.set_title("Year-wise Sales")
+ax.set_ylabel("Average Monthly Sales")
+ax.set_title("Average Monthly Sales by Year")
 
 plt.tight_layout()
 
 st.pyplot(fig)
 
+st.caption(
+    "2015 contains only part of the year in the Rossmann dataset, "
+    "so average monthly sales are used for a fairer year-to-year comparison."
+)
+
 # --------------------------------------------------
-# STORE PERFORMANCE
+# INDIVIDUAL STORE
 # --------------------------------------------------
 
-st.subheader("🔍 Individual Store Performance")
+st.subheader("Individual Store Performance")
 
 selected_store = st.selectbox(
     "Select a Store",
@@ -492,41 +571,44 @@ store_data = filtered_df[
 ]
 
 store_total_sales = store_data["Sales"].sum()
-store_avg_sales = store_data["Sales"].mean()
-store_customers = store_data["Customers"].sum()
+store_average_sales = store_data["Sales"].mean()
+store_total_customers = store_data["Customers"].sum()
 
 col1, col2, col3 = st.columns(3)
 
 with col1:
     st.metric(
-        "Store Total Sales",
+        "Store Sales",
         f"{store_total_sales:,.0f}"
     )
 
 with col2:
     st.metric(
         "Average Daily Sales",
-        f"{store_avg_sales:,.0f}"
+        f"{store_average_sales:,.0f}"
     )
 
 with col3:
     st.metric(
-        "Total Customers",
-        f"{store_customers:,.0f}"
+        "Customers",
+        f"{store_total_customers:,.0f}"
     )
 
-store_monthly_sales = (
+store_monthly = (
     store_data
-    .set_index("Date")
-    .resample("ME")["Sales"]
+    .groupby(
+        store_data["Date"].dt.to_period("M")
+    )["Sales"]
     .sum()
 )
 
-fig, ax = plt.subplots(figsize=(12, 5))
+store_monthly.index = store_monthly.index.to_timestamp()
+
+fig, ax = plt.subplots(figsize=(12, 4))
 
 ax.plot(
-    store_monthly_sales.index,
-    store_monthly_sales.values,
+    store_monthly.index,
+    store_monthly.values,
     marker="o"
 )
 
@@ -543,61 +625,59 @@ st.pyplot(fig)
 # BUSINESS INSIGHTS
 # --------------------------------------------------
 
-st.subheader("💡 Business Insights")
+st.subheader("Business Insights")
 
-best_store = (
+store_totals = (
     filtered_df
     .groupby("Store")["Sales"]
     .sum()
-    .idxmax()
 )
 
-best_store_sales = (
+best_store = store_totals.idxmax()
+best_store_sales = store_totals.max()
+
+monthly_totals = (
     filtered_df
-    .groupby("Store")["Sales"]
+    .groupby(
+        filtered_df["Date"].dt.to_period("M")
+    )["Sales"]
     .sum()
-    .max()
 )
 
-best_month = (
-    filtered_df
-    .groupby(filtered_df["Date"].dt.to_period("M"))["Sales"]
-    .sum()
-    .idxmax()
-)
-
-promo_average = filtered_df[
-    filtered_df["Promo"] == 1
-]["Sales"].mean()
-
-non_promo_average = filtered_df[
-    filtered_df["Promo"] == 0
-]["Sales"].mean()
+best_month = monthly_totals.idxmax()
 
 st.write(
-    f"🏆 **Best Performing Store:** Store {best_store} "
-    f"with sales of {best_store_sales:,.0f}"
+    f"**Highest-performing store:** Store {best_store} "
+    f"with total sales of {best_store_sales:,.0f}."
 )
 
 st.write(
-    f"📅 **Highest Sales Month:** {best_month}"
+    f"**Highest-sales month:** {best_month}."
 )
 
-st.write(
-    f"🎯 **Average Sales with Promotion:** "
-    f"{promo_average:,.0f}"
-)
+if 1 in promo_data.index and 0 in promo_data.index:
 
-st.write(
-    f"🛒 **Average Sales without Promotion:** "
-    f"{non_promo_average:,.0f}"
-)
+    if promo_average > no_promo_average:
+
+        st.write(
+            f"**Promotion effect:** Average daily sales were higher "
+            f"during promotion periods ({promo_average:,.0f}) "
+            f"than during non-promotion periods ({no_promo_average:,.0f})."
+        )
+
+    else:
+
+        st.write(
+            f"**Promotion effect:** Average daily sales were lower "
+            f"during promotion periods ({promo_average:,.0f}) "
+            f"than during non-promotion periods ({no_promo_average:,.0f})."
+        )
 
 # --------------------------------------------------
-# DOWNLOAD FILTERED DATA
+# DOWNLOAD DATA
 # --------------------------------------------------
 
-st.subheader("📥 Download Filtered Data")
+st.subheader("Download Filtered Data")
 
 csv_data = filtered_df.to_csv(index=False)
 
@@ -609,14 +689,12 @@ st.download_button(
 )
 
 # --------------------------------------------------
-# SAMPLE DATA
+# DATA PREVIEW
 # --------------------------------------------------
 
-st.subheader("📋 Filtered Dataset Preview")
+st.subheader("Filtered Data Preview")
 
 st.dataframe(
     filtered_df.head(20),
     use_container_width=True
 )
-
-st.success("✅ Dashboard loaded successfully!")
