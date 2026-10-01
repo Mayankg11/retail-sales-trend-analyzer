@@ -19,51 +19,93 @@ st.markdown("""
 <style>
 
 .stApp {
-    background-color: #f5f7fb;
+    background-color: #0e1117;
+    color: #fafafa;
+}
+
+[data-testid="stHeader"] {
+    background-color: #0e1117;
 }
 
 [data-testid="stSidebar"] {
-    background-color: #111827;
+    background-color: #161b22;
 }
 
 [data-testid="stSidebar"] * {
-    color: #ffffff;
+    color: #ffffff !important;
 }
 
 .main-title {
-    font-size: 36px;
+    font-size: 38px;
     font-weight: 700;
-    color: #111827;
-    margin-bottom: 4px;
+    color: #58a6ff;
+    margin-bottom: 5px;
 }
 
 .subtitle {
+    color: #a8b3c2;
     font-size: 16px;
-    color: #64748b;
     margin-bottom: 25px;
 }
 
 .section-title {
     font-size: 26px;
     font-weight: 700;
-    color: #172554;
+    color: #58a6ff;
     margin-bottom: 15px;
 }
 
+h1, h2, h3 {
+    color: #f0f6fc !important;
+}
+
+p {
+    color: #d1d5db;
+}
+
 div[data-testid="stMetric"] {
-    background: white;
+    background-color: #161b22;
+    border: 1px solid #30363d;
     border-radius: 12px;
     padding: 16px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.06);
+    box-shadow: 0px 3px 10px rgba(0,0,0,0.25);
+}
+
+div[data-testid="stMetricLabel"] {
+    color: #8b949e !important;
+}
+
+div[data-testid="stMetricValue"] {
+    color: #58a6ff !important;
 }
 
 .stButton > button {
+    background-color: #21262d;
+    color: #ffffff;
+    border: 1px solid #30363d;
     border-radius: 8px;
 }
 
+.stButton > button:hover {
+    border-color: #58a6ff;
+    color: #58a6ff;
+}
+
 .stDownloadButton > button {
+    background-color: #21262d;
+    color: #ffffff;
+    border: 1px solid #30363d;
     border-radius: 8px;
+}
+
+.stDownloadButton > button:hover {
+    border-color: #58a6ff;
+    color: #58a6ff;
+}
+
+[data-testid="stDataFrame"] {
+    border: 1px solid #30363d;
+    border-radius: 10px;
 }
 
 div[data-testid="stAlert"] {
@@ -94,6 +136,7 @@ def load_data():
                 train = pd.read_csv(f)
 
     else:
+
         raise FileNotFoundError(
             "train.csv or train.csv.zip not found"
         )
@@ -155,7 +198,6 @@ st.sidebar.caption(
 
 st.sidebar.divider()
 
-
 st.sidebar.markdown(
     "### 📑 Navigation"
 )
@@ -171,9 +213,7 @@ page = st.sidebar.radio(
     ]
 )
 
-
 st.sidebar.divider()
-
 
 st.sidebar.markdown(
     "### 🔎 Filters"
@@ -189,7 +229,6 @@ selected_years = st.sidebar.multiselect(
     default=years
 )
 
-
 store_types = sorted(
     df["StoreType"].dropna().unique()
 )
@@ -200,7 +239,6 @@ selected_store_types = st.sidebar.multiselect(
     default=store_types
 )
 
-
 selected_promo = st.sidebar.multiselect(
     "Promotion",
     [0, 1],
@@ -209,9 +247,7 @@ selected_promo = st.sidebar.multiselect(
         "No Promo" if x == 0 else "Promo"
 )
 
-
 st.sidebar.divider()
-
 
 if st.sidebar.button(
     "🔄 Reset Filters",
@@ -232,20 +268,15 @@ filtered_df = df[
 if filtered_df.empty:
 
     st.warning(
-        "No data is available for the selected filters. "
-        "Please select different filter values."
+        "No data is available for the selected filters."
     )
 
     st.stop()
 
 
-avg_sales = filtered_df[
-    "Sales"
-].mean()
+avg_sales = filtered_df["Sales"].mean()
 
-avg_customers = filtered_df[
-    "Customers"
-].mean()
+avg_customers = filtered_df["Customers"].mean()
 
 customer_sales_corr = filtered_df[
     ["Customers", "Sales"]
@@ -392,8 +423,6 @@ if page == "Overview":
             hide_index=True
         )
 
-    st.write("")
-
     st.markdown(
         "### 🔍 Key Highlights"
     )
@@ -436,23 +465,42 @@ elif page == "Sales Trends":
         figsize=(8, 2.8)
     )
 
+    fig.patch.set_facecolor("#0e1117")
+    ax.set_facecolor("#161b22")
+
     ax.plot(
         monthly_sales.index.astype(str),
         monthly_sales.values,
         linewidth=2
     )
 
-    ax.set_xlabel("Month")
-    ax.set_ylabel("Average Sales")
+    ax.set_xlabel(
+        "Month",
+        color="white"
+    )
+
+    ax.set_ylabel(
+        "Average Sales",
+        color="white"
+    )
 
     ax.tick_params(
+        colors="white",
         axis="x",
         rotation=45
+    )
+
+    ax.tick_params(
+        colors="white",
+        axis="y"
     )
 
     ax.grid(
         alpha=0.2
     )
+
+    for spine in ax.spines.values():
+        spine.set_color("#30363d")
 
     plt.tight_layout()
 
@@ -473,13 +521,27 @@ elif page == "Sales Trends":
             figsize=(5, 2.7)
         )
 
+        fig.patch.set_facecolor("#0e1117")
+        ax.set_facecolor("#161b22")
+
         ax.bar(
             year_sales.index.astype(str),
             year_sales.values
         )
 
-        ax.set_xlabel("Year")
-        ax.set_ylabel("Average Sales")
+        ax.set_xlabel(
+            "Year",
+            color="white"
+        )
+
+        ax.set_ylabel(
+            "Average Sales",
+            color="white"
+        )
+
+        ax.tick_params(
+            colors="white"
+        )
 
         ax.grid(
             axis="y",
@@ -503,13 +565,27 @@ elif page == "Sales Trends":
             figsize=(5, 2.7)
         )
 
+        fig.patch.set_facecolor("#0e1117")
+        ax.set_facecolor("#161b22")
+
         ax.bar(
             month_sales.index,
             month_sales.values
         )
 
-        ax.set_xlabel("Month")
-        ax.set_ylabel("Average Sales")
+        ax.set_xlabel(
+            "Month",
+            color="white"
+        )
+
+        ax.set_ylabel(
+            "Average Sales",
+            color="white"
+        )
+
+        ax.tick_params(
+            colors="white"
+        )
 
         ax.grid(
             axis="y",
@@ -541,14 +617,28 @@ elif page == "Sales Drivers":
         figsize=(7, 2.8)
     )
 
+    fig.patch.set_facecolor("#0e1117")
+    ax.set_facecolor("#161b22")
+
     ax.scatter(
         filtered_df["Customers"],
         filtered_df["Sales"],
         alpha=0.2
     )
 
-    ax.set_xlabel("Customers")
-    ax.set_ylabel("Sales")
+    ax.set_xlabel(
+        "Customers",
+        color="white"
+    )
+
+    ax.set_ylabel(
+        "Sales",
+        color="white"
+    )
+
+    ax.tick_params(
+        colors="white"
+    )
 
     ax.grid(
         alpha=0.2
@@ -578,6 +668,9 @@ elif page == "Sales Drivers":
             figsize=(5, 2.7)
         )
 
+        fig.patch.set_facecolor("#0e1117")
+        ax.set_facecolor("#161b22")
+
         sns.boxplot(
             x="Promo",
             y="Sales",
@@ -586,11 +679,17 @@ elif page == "Sales Drivers":
         )
 
         ax.set_xlabel(
-            "Promotion"
+            "Promotion",
+            color="white"
         )
 
         ax.set_ylabel(
-            "Sales"
+            "Sales",
+            color="white"
+        )
+
+        ax.tick_params(
+            colors="white"
         )
 
         plt.tight_layout()
@@ -634,22 +733,27 @@ elif page == "Sales Drivers":
             figsize=(5, 2.7)
         )
 
+        fig.patch.set_facecolor("#0e1117")
+        ax.set_facecolor("#161b22")
+
         pivot.plot(
             kind="bar",
             ax=ax
         )
 
         ax.set_xlabel(
-            "Day of Week"
+            "Day of Week",
+            color="white"
         )
 
         ax.set_ylabel(
-            "Average Sales"
+            "Average Sales",
+            color="white"
         )
 
         ax.tick_params(
-            axis="x",
-            rotation=0
+            colors="white",
+            axis="both"
         )
 
         plt.tight_layout()
@@ -691,6 +795,9 @@ elif page == "Sales Drivers":
         figsize=(7, 3.2)
     )
 
+    fig.patch.set_facecolor("#0e1117")
+    ax.set_facecolor("#161b22")
+
     sns.heatmap(
         filtered_df[columns].corr(),
         annot=True,
@@ -723,6 +830,9 @@ elif page == "Store Performance":
         figsize=(7, 2.8)
     )
 
+    fig.patch.set_facecolor("#0e1117")
+    ax.set_facecolor("#161b22")
+
     sns.boxplot(
         x="StoreType",
         y="Sales",
@@ -731,11 +841,17 @@ elif page == "Store Performance":
     )
 
     ax.set_xlabel(
-        "Store Type"
+        "Store Type",
+        color="white"
     )
 
     ax.set_ylabel(
-        "Sales"
+        "Sales",
+        color="white"
+    )
+
+    ax.tick_params(
+        colors="white"
     )
 
     plt.tight_layout()
@@ -757,10 +873,15 @@ elif page == "Store Performance":
             figsize=(3.8, 3.2)
         )
 
+        fig.patch.set_facecolor("#0e1117")
+
         ax.pie(
             store_type_total.values,
             labels=store_type_total.index,
-            autopct="%1.1f%%"
+            autopct="%1.1f%%",
+            textprops={
+                "color": "white"
+            }
         )
 
         plt.tight_layout()
@@ -843,15 +964,26 @@ elif page == "Store Performance":
             figsize=(5, 2.8)
         )
 
+        fig.patch.set_facecolor("#0e1117")
+        ax.set_facecolor("#161b22")
+
         top_stores.plot(
             kind="bar",
             ax=ax
         )
 
-        ax.set_xlabel("Store")
-        ax.set_ylabel("Average Sales")
+        ax.set_xlabel(
+            "Store",
+            color="white"
+        )
+
+        ax.set_ylabel(
+            "Average Sales",
+            color="white"
+        )
 
         ax.tick_params(
+            colors="white",
             axis="x",
             rotation=45
         )
@@ -873,15 +1005,26 @@ elif page == "Store Performance":
             figsize=(5, 2.8)
         )
 
+        fig.patch.set_facecolor("#0e1117")
+        ax.set_facecolor("#161b22")
+
         bottom_stores.sort_values().plot(
             kind="bar",
             ax=ax
         )
 
-        ax.set_xlabel("Store")
-        ax.set_ylabel("Average Sales")
+        ax.set_xlabel(
+            "Store",
+            color="white"
+        )
+
+        ax.set_ylabel(
+            "Average Sales",
+            color="white"
+        )
 
         ax.tick_params(
+            colors="white",
             axis="x",
             rotation=45
         )
