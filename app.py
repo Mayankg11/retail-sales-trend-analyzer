@@ -7,6 +7,10 @@ import zipfile
 import os
 
 
+# ---------------------------------------------------------
+# PAGE SETUP
+# ---------------------------------------------------------
+
 st.set_page_config(
     page_title="Retail Sales Trend Analyzer",
     page_icon="📊",
@@ -14,7 +18,12 @@ st.set_page_config(
 )
 
 st.title("Retail Sales Trend Analyzer")
-st.caption("Rossmann Store Sales | EDA + Interactive Business Insights")
+st.caption("Rossmann Store Sales | EDA + Business Insights")
+
+
+# ---------------------------------------------------------
+# LOAD DATA
+# ---------------------------------------------------------
 
 @st.cache_data
 def load_data():
@@ -40,26 +49,30 @@ def load_data():
 
     store = pd.read_csv("store.csv")
 
-    # Same cleaning used in Kaggle analysis
+    # Missing value handling
     store["CompetitionDistance"] = store[
         "CompetitionDistance"
     ].fillna(
         store["CompetitionDistance"].median()
     )
 
+    # Remove unnecessary columns
     store = store.drop(columns=[
         "CompetitionOpenSinceMonth",
         "CompetitionOpenSinceYear"
     ])
 
+    # Date conversion
     train["Date"] = pd.to_datetime(train["Date"])
 
+    # Merge datasets
     df = train.merge(
         store,
         on="Store",
         how="left"
     )
 
+    # Feature engineering
     df["Year"] = df["Date"].dt.year
     df["Month"] = df["Date"].dt.month
     df["YearMonth"] = df["Date"].dt.to_period("M")
@@ -78,134 +91,43 @@ except Exception as e:
     st.error(str(e))
     st.stop()
 
-st.sidebar.title("Dashboard Controls")
 
-page = st.sidebar.radio(
-    "Select Section",
-    [
-        "Overview",
-        "Sales Trends",
-        "Sales Drivers",
-        "Store Performance",
-        "Findings"
-    ]
-)
+# ---------------------------------------------------------
+# BASIC CALCULATIONS
+# ---------------------------------------------------------
 
-st.sidebar.divider()
+avg_sales = df["Sales"].mean()
+avg_customers = df["Customers"].mean()
 
-st.sidebar.subheader("Filters")
+promo_sales = df.groupby("Promo")["Sales"].mean()
 
-# Year filter
-years = sorted(df["Year"].unique())
-
-selected_years = st.sidebar.multiselect(
-    "Year",
-    years,
-    default=years
-)
-
-# Store type filter
-store_types = sorted(df["StoreType"].unique())
-
-selected_store_types = st.sidebar.multiselect(
-    "Store Type",
-    store_types,
-    default=store_types
-)
-
-# Promo filter
-promo_options = st.sidebar.multiselect(
-    "Promotion",
-    [0, 1],
-    default=[0, 1],
-    format_func=lambda x: "No Promo" if x == 0 else "Promo"
-)
-
-# Store filter
-store_list = sorted(df["Store"].unique())
-
-selected_stores = st.sidebar.multiselect(
-    "Store",
-    store_list,
-    default=[]
-)
-
-filtered_df = df[
-    (df["Year"].isin(selected_years)) &
-    (df["StoreType"].isin(selected_store_types)) &
-    (df["Promo"].isin(promo_options))
-].copy()
-
-# Store filter only applied if user selects stores
-if selected_stores:
-    filtered_df = filtered_df[
-        filtered_df["Store"].isin(selected_stores)
-    ]
-
-st.sidebar.divider()
-
-if st.sidebar.button("Reset Filters"):
-    st.rerun()
-
-st.sidebar.caption(
-    f"Showing {len(filtered_df):,} of {len(df):,} records"
-)
-
-if filtered_df.empty:
-
-    st.warning(
-        "No data available for the selected filters. "
-        "Please change the filter values."
-    )
-
-    st.stop()
-
-csv_data = filtered_df.to_csv(index=False)
-
-st.sidebar.download_button(
-    label="Download Filtered Data",
-    data=csv_data,
-    file_name="filtered_retail_sales.csv",
-    mime="text/csv"
-)
-
-avg_sales = filtered_df["Sales"].mean()
-
-avg_customers = filtered_df["Customers"].mean()
-
-total_sales = filtered_df["Sales"].sum()
-
-customer_sales_corr = filtered_df[
+customer_sales_corr = df[
     ["Customers", "Sales"]
 ].corr().iloc[0, 1]
 
-promo_sales = filtered_df.groupby(
-    "Promo"
-)["Sales"].mean()
-
-monthly_sales = filtered_df.groupby(
+monthly_sales = df.groupby(
     "YearMonth"
 )["Sales"].mean()
 
-year_sales = filtered_df.groupby(
+year_sales = df.groupby(
     "Year"
 )["Sales"].mean()
 
-month_sales = filtered_df.groupby(
+month_sales = df.groupby(
     "Month"
 )["Sales"].mean()
 
-store_type_avg = filtered_df.groupby(
+store_type_avg = df.groupby(
     "StoreType"
 )["Sales"].mean()
 
 store_type_total = (
-    filtered_df.groupby("StoreType")["Sales"]
+    df.groupby("StoreType")["Sales"]
     .sum()
     .sort_values(ascending=False)
 )
 
-store_sales = filtered_df.groupby(
+store_sales = df.groupby(
     "Store"
 )["Sales"].mean()
 
@@ -218,6 +140,28 @@ bottom_stores = store_sales.sort_values(
 ).head(10)
 
 
+# ---------------------------------------------------------
+# SIDEBAR
+# ---------------------------------------------------------
+
+st.sidebar.title("Project Sections")
+
+page = st.sidebar.radio(
+    "Select",
+    [
+        "Overview",
+        "Sales Trends",
+        "Sales Drivers",
+        "Store Performance",
+        "Findings"
+    ]
+)
+
+
+# =========================================================
+# OVERVIEW
+# =========================================================
+
 if page == "Overview":
 
     st.header("Overview")
@@ -226,7 +170,7 @@ if page == "Overview":
 
     c1.metric(
         "Records",
-        f"{len(filtered_df):,}"
+        f"{len(df):,}"
     )
 
     c2.metric(
@@ -235,8 +179,8 @@ if page == "Overview":
     )
 
     c3.metric(
-        "Total Sales",
-        f"{total_sales:,.0f}"
+        "Avg Customers",
+        f"{avg_customers:,.0f}"
     )
 
     c4.metric(
@@ -244,47 +188,15 @@ if page == "Overview":
         f"{customer_sales_corr:.3f}"
     )
 
-    st.divider()
+    st.write("")
 
-    st.subheader("Quick Insights")
-
-    q1, q2, q3 = st.columns(3)
-
-    if not store_type_avg.empty:
-
-        q1.metric(
-            "Top Store Type",
-            store_type_avg.idxmax().upper(),
-            f"{store_type_avg.max():,.0f} avg sales"
-        )
-
-    if not month_sales.empty:
-
-        q2.metric(
-            "Best Month",
-            f"Month {month_sales.idxmax()}",
-            f"{month_sales.max():,.0f} avg sales"
-        )
-
-    if not promo_sales.empty and len(promo_sales) > 1:
-
-        promo_difference = (
-            promo_sales[1] - promo_sales[0]
-        )
-
-        q3.metric(
-            "Promo Difference",
-            f"{promo_difference:,.0f}",
-            "Average sales difference"
-        )
-
-    st.divider()
+    st.subheader("Quick look")
 
     col1, col2 = st.columns(2)
 
     with col1:
 
-        st.write("**Average Sales by Store Type**")
+        st.write("**Average sales by store type**")
 
         temp = (
             store_type_avg
@@ -305,9 +217,12 @@ if page == "Overview":
 
     with col2:
 
-        st.write("**Total Sales by Store Type**")
+        st.write("**Total sales by store type**")
 
-        temp2 = store_type_total.reset_index()
+        temp2 = (
+            store_type_total
+            .reset_index()
+        )
 
         temp2.columns = [
             "Store Type",
@@ -322,27 +237,36 @@ if page == "Overview":
 
     st.divider()
 
-    st.subheader("Current Filter Summary")
+    st.subheader("What stands out?")
 
-    st.write(
+    st.markdown(
         f"""
-        **Years:** {", ".join(map(str, selected_years))}  
-        **Store Types:** {", ".join(selected_store_types)}  
-        **Promotion:** {", ".join(
-            ["No Promo" if x == 0 else "Promo"
-             for x in promo_options]
-        )}
+        - **Customers and sales:** strong positive relationship ({customer_sales_corr:.3f})
+        - **Promotion:** average sales are higher when Promo = 1
+        - **Highest average-sales store type:** {store_type_avg.idxmax().upper()}
+        - **Highest total-sales store type:** {store_type_total.idxmax().upper()}
+        - **Highest average-sales month:** Month {month_sales.idxmax()}
         """
     )
 
+
+# =========================================================
+# SALES TRENDS
+# =========================================================
 
 elif page == "Sales Trends":
 
     st.header("Sales Trends")
 
+    # -----------------------------------------------------
+    # Monthly Average Sales
+    # -----------------------------------------------------
+
     st.subheader("Monthly Average Sales")
 
-    fig, ax = plt.subplots(figsize=(7, 3.5))
+    fig, ax = plt.subplots(
+        figsize=(7, 2.5)
+    )
 
     ax.plot(
         monthly_sales.index.astype(str),
@@ -352,7 +276,11 @@ elif page == "Sales Trends":
 
     ax.set_xlabel("Month")
     ax.set_ylabel("Average Sales")
-    ax.tick_params(axis="x", rotation=45)
+
+    ax.tick_params(
+        axis="x",
+        rotation=45
+    )
 
     plt.tight_layout()
 
@@ -361,19 +289,20 @@ elif page == "Sales Trends":
         use_container_width=False
     )
 
-    plt.close(fig)
+    st.caption(
+        "Sales move up and down across the year instead of staying constant."
+    )
 
-    if not monthly_sales.empty:
 
-        st.caption(
-            f"Highest monthly average: "
-            f"{monthly_sales.idxmax()} "
-            f"({monthly_sales.max():,.0f})."
-        )
+    # -----------------------------------------------------
+    # Average Sales by Year
+    # -----------------------------------------------------
 
     st.subheader("Average Sales by Year")
 
-    fig, ax = plt.subplots(figsize=(6, 3.5))
+    fig, ax = plt.subplots(
+        figsize=(5, 2.5)
+    )
 
     ax.bar(
         year_sales.index.astype(str),
@@ -390,17 +319,20 @@ elif page == "Sales Trends":
         use_container_width=False
     )
 
-    plt.close(fig)
+    st.caption(
+        f"{year_sales.idxmax()} has the highest average sales among the available years."
+    )
 
-    if not year_sales.empty:
 
-        st.caption(
-            f"{year_sales.idxmax()} has the highest "
-            f"average sales in the selected data."
-        )
+    # -----------------------------------------------------
+    # Average Sales by Month
+    # -----------------------------------------------------
+
     st.subheader("Average Sales by Month")
 
-    fig, ax = plt.subplots(figsize=(7, 3.5))
+    fig, ax = plt.subplots(
+        figsize=(7, 2.5)
+    )
 
     ax.bar(
         month_sales.index,
@@ -417,26 +349,34 @@ elif page == "Sales Trends":
         use_container_width=False
     )
 
-    plt.close(fig)
+    st.caption(
+        f"Month {month_sales.idxmax()} has the highest average sales, "
+        f"while Month {month_sales.idxmin()} has the lowest."
+    )
 
-    if not month_sales.empty:
 
-        st.caption(
-            f"Month {month_sales.idxmax()} has the highest "
-            f"average sales."
-        )
-
+# =========================================================
+# SALES DRIVERS
+# =========================================================
 
 elif page == "Sales Drivers":
 
     st.header("Sales Drivers")
+
+
+    # -----------------------------------------------------
+    # Customers vs Sales
+    # -----------------------------------------------------
+
     st.subheader("Customers vs Sales")
 
-    fig, ax = plt.subplots(figsize=(6, 3.5))
+    fig, ax = plt.subplots(
+        figsize=(6, 2.5)
+    )
 
     ax.scatter(
-        filtered_df["Customers"],
-        filtered_df["Sales"],
+        df["Customers"],
+        df["Sales"],
         alpha=0.2
     )
 
@@ -450,26 +390,35 @@ elif page == "Sales Drivers":
         use_container_width=False
     )
 
-    plt.close(fig)
-
     st.markdown(
-        f"**Correlation: {customer_sales_corr:.3f}** — "
-        "higher customer counts are generally associated "
-        "with higher sales."
+        f"""
+        **Correlation: {customer_sales_corr:.3f}**
+        — more customers are generally linked with higher sales.
+        """
     )
+
+
+    # -----------------------------------------------------
+    # Promotion vs Sales
+    # -----------------------------------------------------
 
     st.subheader("Promotion vs Sales")
 
-    fig, ax = plt.subplots(figsize=(5.5, 3.5))
+    fig, ax = plt.subplots(
+        figsize=(5, 2.5)
+    )
 
     sns.boxplot(
         x="Promo",
         y="Sales",
-        data=filtered_df,
+        data=df,
         ax=ax
     )
 
-    ax.set_xlabel("Promo (0 = No, 1 = Yes)")
+    ax.set_xlabel(
+        "Promo (0 = No, 1 = Yes)"
+    )
+
     ax.set_ylabel("Sales")
 
     plt.tight_layout()
@@ -479,25 +428,25 @@ elif page == "Sales Drivers":
         use_container_width=False
     )
 
-    plt.close(fig)
+    st.markdown(
+        f"""
+        **Without Promo:** {promo_sales[0]:,.0f} average sales
 
-    if 0 in promo_sales.index:
+        **With Promo:** {promo_sales[1]:,.0f} average sales
 
-        st.write(
-            f"**Without Promo:** "
-            f"{promo_sales[0]:,.0f} average sales"
-        )
+        → Promotion periods show noticeably higher sales.
+        """
+    )
 
-    if 1 in promo_sales.index:
 
-        st.write(
-            f"**With Promo:** "
-            f"{promo_sales[1]:,.0f} average sales"
-        )
+    # -----------------------------------------------------
+    # Day of Week + Promotion
+    # -----------------------------------------------------
+
     st.subheader("Day of Week + Promotion")
 
     day_promo = (
-        filtered_df.groupby(
+        df.groupby(
             ["DayOfWeek", "Promo"]
         )["Sales"]
         .mean()
@@ -510,14 +459,14 @@ elif page == "Sales Drivers":
         values="Sales"
     )
 
-    pivot = pivot.rename(
-        columns={
-            0: "No Promo",
-            1: "Promo"
-        }
-    )
+    pivot.columns = [
+        "No Promo",
+        "Promo"
+    ]
 
-    fig, ax = plt.subplots(figsize=(7, 3.5))
+    fig, ax = plt.subplots(
+        figsize=(7, 2.5)
+    )
 
     pivot.plot(
         kind="bar",
@@ -526,6 +475,7 @@ elif page == "Sales Drivers":
 
     ax.set_xlabel("Day of Week")
     ax.set_ylabel("Average Sales")
+
     ax.tick_params(
         axis="x",
         rotation=0
@@ -538,13 +488,14 @@ elif page == "Sales Drivers":
         use_container_width=False
     )
 
-    plt.close(fig)
-
     st.caption(
-        "The difference between promotion and non-promotion "
-        "sales varies across the week."
+        "The promotion difference changes depending on the day."
     )
 
+
+    # -----------------------------------------------------
+    # Correlation Heatmap
+    # -----------------------------------------------------
 
     st.subheader("Correlation Heatmap")
 
@@ -558,11 +509,11 @@ elif page == "Sales Drivers":
     ]
 
     fig, ax = plt.subplots(
-        figsize=(6.5, 4.5)
+        figsize=(6, 3)
     )
 
     sns.heatmap(
-        filtered_df[columns].corr(),
+        df[columns].corr(),
         annot=True,
         cmap="coolwarm",
         ax=ax
@@ -575,67 +526,35 @@ elif page == "Sales Drivers":
         use_container_width=False
     )
 
-    plt.close(fig)
-
     st.caption(
         "Customers show the strongest positive relationship "
-        "with Sales among the selected variables."
+        "with Sales among the variables shown."
     )
+
+
+# =========================================================
+# STORE PERFORMANCE
+# =========================================================
+
 elif page == "Store Performance":
 
     st.header("Store Performance")
-    available_stores = sorted(
-        filtered_df["Store"].unique()
-    )
 
-    selected_store = st.selectbox(
-        "Select a Store to Explore",
-        available_stores
-    )
 
-    selected_store_data = filtered_df[
-        filtered_df["Store"] == selected_store
-    ]
-
-    store_avg = selected_store_data["Sales"].mean()
-
-    store_customers = selected_store_data[
-        "Customers"
-    ].mean()
-
-    store_promo = selected_store_data[
-        "Promo"
-    ].mean()
-
-    s1, s2, s3 = st.columns(3)
-
-    s1.metric(
-        "Selected Store",
-        selected_store
-    )
-
-    s2.metric(
-        "Average Sales",
-        f"{store_avg:,.0f}"
-    )
-
-    s3.metric(
-        "Average Customers",
-        f"{store_customers:,.0f}"
-    )
-
-    st.divider()
+    # -----------------------------------------------------
+    # Sales by Store Type
+    # -----------------------------------------------------
 
     st.subheader("Sales by Store Type")
 
     fig, ax = plt.subplots(
-        figsize=(6, 3.5)
+        figsize=(6, 2.5)
     )
 
     sns.boxplot(
         x="StoreType",
         y="Sales",
-        data=filtered_df,
+        data=df,
         ax=ax
     )
 
@@ -649,25 +568,28 @@ elif page == "Store Performance":
         use_container_width=False
     )
 
-    plt.close(fig)
-
-    if not store_type_avg.empty:
-
-        st.caption(
-            f"Store Type "
-            f"{store_type_avg.idxmax().upper()} "
-            f"has the highest average sales."
-        )
-    st.subheader(
-        "Where does the Total Sales Come From?"
+    st.caption(
+        f"Store Type {store_type_avg.idxmax().upper()} "
+        "has the highest average sales per record."
     )
 
-    col1, col2 = st.columns(2)
+
+    # -----------------------------------------------------
+    # Total Sales Contribution
+    # -----------------------------------------------------
+
+    st.subheader(
+        "Where does the total sales come from?"
+    )
+
+    col1, col2 = st.columns(
+        [1, 1]
+    )
 
     with col1:
 
         fig, ax = plt.subplots(
-            figsize=(4.5, 4.5)
+            figsize=(3.5, 3.5)
         )
 
         ax.pie(
@@ -685,19 +607,16 @@ elif page == "Store Performance":
             use_container_width=False
         )
 
-        plt.close(fig)
 
     with col2:
 
         revenue_table = pd.DataFrame({
-            "Store Type":
-                store_type_total.index,
-            "Total Sales":
-                store_type_total.values
+            "Store Type": store_type_total.index,
+            "Total Sales": store_type_total.values
         })
 
         st.write(
-            "**Total Sales by Store Type**"
+            "**Total sales ranking**"
         )
 
         st.dataframe(
@@ -706,10 +625,20 @@ elif page == "Store Performance":
             hide_index=True
         )
 
+        st.write(
+            f"Type **{store_type_total.index[0].upper()}** "
+            "contributes the most total sales."
+        )
+
+
+    # -----------------------------------------------------
+    # Top 10 Stores
+    # -----------------------------------------------------
+
     st.subheader("Top 10 Stores")
 
     fig, ax = plt.subplots(
-        figsize=(7, 3.5)
+        figsize=(7, 2.5)
     )
 
     top_stores.plot(
@@ -719,6 +648,7 @@ elif page == "Store Performance":
 
     ax.set_xlabel("Store")
     ax.set_ylabel("Average Sales")
+
     ax.tick_params(
         axis="x",
         rotation=45
@@ -731,11 +661,20 @@ elif page == "Store Performance":
         use_container_width=False
     )
 
-    plt.close(fig)
+    st.caption(
+        f"Store {top_stores.index[0]} has the highest "
+        "average sales in the dataset."
+    )
+
+
+    # -----------------------------------------------------
+    # Bottom 10 Stores
+    # -----------------------------------------------------
+
     st.subheader("Bottom 10 Stores")
 
     fig, ax = plt.subplots(
-        figsize=(7, 3.5)
+        figsize=(7, 2.5)
     )
 
     bottom_stores.sort_values().plot(
@@ -745,6 +684,7 @@ elif page == "Store Performance":
 
     ax.set_xlabel("Store")
     ax.set_ylabel("Average Sales")
+
     ax.tick_params(
         axis="x",
         rotation=45
@@ -757,108 +697,136 @@ elif page == "Store Performance":
         use_container_width=False
     )
 
-    plt.close(fig)
+    st.caption(
+        f"Store {bottom_stores.index[0]} has the lowest "
+        "average sales among the stores."
+    )
+
+
+# =========================================================
+# FINDINGS
+# =========================================================
+
 elif page == "Findings":
 
     st.header("What We Found")
+
+
+    # -----------------------------------------------------
+    # Finding 1
+    # -----------------------------------------------------
 
     st.subheader("1. Customers matter")
 
     st.write(
         f"Customer count has a strong positive relationship "
-        f"with sales (correlation = "
-        f"{customer_sales_corr:.3f})."
+        f"with sales (correlation = {customer_sales_corr:.3f})."
     )
 
     st.info(
-        "Customer traffic is an important variable when "
-        "examining sales performance."
+        "Keep an eye on customer traffic when monitoring store performance."
     )
 
-    st.subheader("2. Promotions show higher sales")
 
-    if 0 in promo_sales.index and 1 in promo_sales.index:
+    # -----------------------------------------------------
+    # Finding 2
+    # -----------------------------------------------------
 
-        st.write(
-            f"Average sales with promotion are "
-            f"{promo_sales[1]:,.0f}, compared with "
-            f"{promo_sales[0]:,.0f} without promotion."
-        )
+    st.subheader("2. Promotions are useful")
+
+    st.write(
+        f"Average sales with promotion are "
+        f"{promo_sales[1]:,.0f}, compared with "
+        f"{promo_sales[0]:,.0f} without promotion."
+    )
 
     st.info(
-        "Promotion periods show a noticeable difference "
-        "in average sales."
+        "Promotions can be planned around periods where "
+        "customer demand is stronger."
     )
+
+
+    # -----------------------------------------------------
+    # Finding 3
+    # -----------------------------------------------------
 
     st.subheader("3. Sales change with time")
 
-    if not month_sales.empty:
-
-        st.write(
-            f"Month {month_sales.idxmax()} has the highest "
-            f"average sales, while Month "
-            f"{month_sales.idxmin()} has the lowest."
-        )
-
-    st.info(
-        "Historical time patterns can help understand "
-        "changes in sales."
+    st.write(
+        f"Month {month_sales.idxmax()} has the highest average sales, "
+        f"while Month {month_sales.idxmin()} has the lowest."
     )
 
-    st.subheader("4. Store types behave differently")
-
-    if not store_type_avg.empty:
-
-        st.write(
-            f"Type {store_type_avg.idxmax().upper()} "
-            f"has the highest average sales."
-        )
-
-    if not store_type_total.empty:
-
-        st.write(
-            f"Type {store_type_total.idxmax().upper()} "
-            f"contributes the most total sales."
-        )
-
     st.info(
-        "Average sales and total sales provide different "
-        "views of store performance."
+        "Historical monthly patterns can help with inventory "
+        "and staff planning."
     )
 
-    st.subheader("5. Store performance varies")
 
-    if not top_stores.empty and not bottom_stores.empty:
+    # -----------------------------------------------------
+    # Finding 4
+    # -----------------------------------------------------
 
-        st.write(
-            f"Store {top_stores.index[0]} has the highest "
-            f"average sales in the selected data, while "
-            f"Store {bottom_stores.index[0]} is among the lowest."
-        )
+    st.subheader(
+        "4. Store types behave differently"
+    )
+
+    st.write(
+        f"Type {store_type_avg.idxmax().upper()} has the highest "
+        f"average sales, but Type "
+        f"{store_type_total.idxmax().upper()} contributes "
+        "the most total sales."
+    )
 
     st.info(
-        "Store-level differences can be explored using "
-        "customers, promotions, competition and store type."
+        "Use both average sales and total sales when comparing store types."
     )
+
+
+    # -----------------------------------------------------
+    # Finding 5
+    # -----------------------------------------------------
+
+    st.subheader(
+        "5. Some stores need closer attention"
+    )
+
+    st.write(
+        f"Store {top_stores.index[0]} is the highest performer "
+        f"by average sales, while Store "
+        f"{bottom_stores.index[0]} is among the lowest."
+    )
+
+    st.info(
+        "Low-performing stores can be investigated using customers, "
+        "promotions, competition and store characteristics."
+    )
+
 
     st.divider()
 
-    st.subheader("Final Takeaway")
+    st.subheader("Final takeaway")
 
     st.write(
-        "Sales are related to multiple factors including "
-        "customer traffic, promotions, time patterns and "
-        "store-level characteristics."
+        "Sales are not controlled by one variable. "
+        "Customer traffic, promotions, time patterns and "
+        "store-level differences all show useful relationships "
+        "in the data."
     )
 
     st.caption(
-        "Note: These are patterns observed in the dataset "
-        "and do not prove causation."
+        "Note: These are patterns observed in the dataset, "
+        "not proof of causation."
     )
+
+
+# ---------------------------------------------------------
+# FOOTER
+# ---------------------------------------------------------
 
 st.divider()
 
 st.caption(
-    "Retail Sales Trend Analyzer • "
-    "Python • Pandas • Matplotlib • Seaborn • Streamlit"
+    "Retail Sales Trend Analyzer • Built using Python, Pandas, "
+    "Matplotlib, Seaborn & Streamlit"
 )
